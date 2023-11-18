@@ -11,8 +11,8 @@
 
 // Structure to represent a node in the queue
 typedef struct _QueueNode {
-    int val;                 // Value stored in the node
-    struct _QueueNode *next; // Pointer to the next node
+	int val;                 // Value stored in the node
+	struct _QueueNode *next; // Pointer to the next node
 } qnode_t;
 
 // Structure to represent a queue
