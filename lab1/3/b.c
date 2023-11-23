@@ -14,7 +14,7 @@ void *thread_function(void *arg)
 
 	printf("Thread: intValue = %d, stringValue = %s\n", data->intValue, data->stringValue);
 
-	free(arg)
+	free(arg);
 
 	return NULL;
 }
