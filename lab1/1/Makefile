@@ -1,5 +1,8 @@
-TARGET = thread-example
-SRCS = thread.c
+TARGET_THREAD = thread-example
+TARGET_B = b-example
+
+SRCS_THREAD = thread.c
+SRCS_B = b.c
 
 CC=gcc
 RM=rm
@@ -7,10 +10,13 @@ CFLAGS= -g -Wall
 LIBS=-lpthread
 INCLUDE_DIR="."
 
-all: ${TARGET}
+all: ${TARGET_THREAD} ${TARGET_B}
 
-${TARGET}: ${SRCS}
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${SRCS} ${LIBS} -o ${TARGET}
+${TARGET_THREAD}: ${SRCS_THREAD}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${SRCS_THREAD} ${LIBS} -o ${TARGET_THREAD}
+
+${TARGET_B}: ${SRCS_B}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${SRCS_B} ${LIBS} -o ${TARGET_B}
 
 clean:
-	${RM} -f *.o ${TARGET}
+	${RM} -f *.o ${TARGET_THREAD} ${TARGET_B}
