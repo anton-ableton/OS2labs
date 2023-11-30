@@ -35,5 +35,5 @@ int main() {
   pthread_attr_destroy(&attr);
 
 
-  return 0;
+  pthread_exit(NULL);
 }
