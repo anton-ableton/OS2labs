@@ -18,10 +18,7 @@
 #define PAGE 4096
 #define STACK_SIZE 3 * PAGE
 
-
-int thread_startup(void* arg)
-{
-
+int thread_startup(void* arg) {
     mythread_t tid = (mythread_t)arg;
     mythread_struct_t* thread = tid;
     void* retval;
@@ -35,7 +32,7 @@ int thread_startup(void* arg)
     if (thread->joinable) {
         printf("thread_startup: waiting for join() the thread %d\n", thread->mythread_id);
         while (!thread->joined)
-        usleep(1);
+            usleep(1);
     }
 
     printf("thread_startup: the thread function finished for the thread %d\n", thread->mythread_id);
@@ -43,20 +40,37 @@ int thread_startup(void* arg)
     return 0;
 }
 
-void* create_stack(off_t size, int mytid)
-{
+void* create_stack(off_t size, int mytid) {
     char stack_file[128];
     int stack_fd;
     void* stack;
 
     snprintf(stack_file, sizeof(stack_file), "stack-%d", mytid);
     stack_fd = open(stack_file, O_RDWR | O_CREAT, 0660);
-    ftruncate(stack_fd, 0);
+    if (stack_fd == -1) {
+        perror("Failed to open stack file");
+        return NULL;
+    }
 
-    ftruncate(stack_fd, size);
+    if (ftruncate(stack_fd, 0) == -1) {
+        perror("Failed to truncate stack file");
+        close(stack_fd);
+        return NULL;
+    }
+
+    if (ftruncate(stack_fd, size) == -1) {
+        perror("Failed to resize stack file");
+        close(stack_fd);
+        return NULL;
+    }
 
     stack = mmap(NULL, size, PROT_NONE, MAP_SHARED, stack_fd, 0);
     close(stack_fd);
+
+    if (stack == MAP_FAILED) {
+        perror("Failed to mmap stack");
+        return NULL;
+    }
 
     return stack;
 }
@@ -71,6 +85,10 @@ int mythread_create(mythread_t* mytid, int is_joinable, void* (*start_routine)(v
 
     printf("mythread_create: creating thread %d\n", mythread_id);
     child_stack = create_stack(STACK_SIZE, mythread_id);
+    if (child_stack == NULL) {
+        return -1;
+    }
+
     mprotect(child_stack + PAGE, STACK_SIZE - PAGE, PROT_READ | PROT_WRITE);
     memset(child_stack + PAGE, 0x7f, STACK_SIZE - PAGE);
 
@@ -93,8 +111,6 @@ int mythread_create(mythread_t* mytid, int is_joinable, void* (*start_routine)(v
 
     printf("child stack %p; mythread_struct %p; \n", child_stack, thread);
 
-    
-
     if (!is_joinable) {
         child_pid = clone(thread_startup, child_stack, CLONE_VM | CLONE_SIGHAND | SIGCHLD, thread);
         int status;
@@ -109,9 +125,7 @@ int mythread_create(mythread_t* mytid, int is_joinable, void* (*start_routine)(v
     return 0;
 }
 
-
-void mythread_join(mythread_t mytid, void** retval)
-{
+void mythread_join(mythread_t mytid, void** retval) {
     mythread_struct_t* thread = mytid;
 
     printf("thread_join: waiting for the thread %d to finish\n", thread->mythread_id);
@@ -125,4 +139,3 @@ void mythread_join(mythread_t mytid, void** retval)
     *retval = thread->retval;
     thread->joined = 1;
 }
-
