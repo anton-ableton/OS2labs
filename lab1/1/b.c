@@ -62,7 +62,7 @@ int main()
 		}
 	}
 
-	sleep(30);
+	sleep(3);
 
 	for (int i = 0; i < NUM_THREADS; i++)
 	{
