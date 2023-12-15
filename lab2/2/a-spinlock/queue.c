@@ -15,9 +15,13 @@ void spinlock_init(spinlock_t *s) {
     s->lock = 1;
 }
 
+
 void spinlock_lock(spinlock_t *s) {
+    // The program will retry the lock until it succeeds.
     while (1) {
         int one = 1;
+        // is an atomic comparison and exchange operation. It tries to compare the s->lock value with the one value. 
+        // If they are equal, then s->lock is set to 0, which means a successful lock capture, and the loop is interrupted.
         if (atomic_compare_exchange_strong(&s->lock, &one, 0)) {
             break;
         }
@@ -71,15 +75,29 @@ queue_t *queue_init(int max_count) {
 }
 
 void queue_destroy(queue_t *q) {
-    for (int i = 0; i < q->count; ++i) {
-        qnode_t *tmp = q->first;
-        q->first = q->first->next;
-        free(tmp);
+    if (q == NULL) {
+        return;
     }
+
+    pthread_cancel(q->qmonitor_tid);
+    pthread_join(q->qmonitor_tid, NULL);
+
+    free(spin);
+    
+    qnode_t *current = q->first;
+    while (current != NULL) {
+        qnode_t *temp = current;
+        current = current->next;
+        free(temp);
+    }
+
     q->count = 0;
     q->first = NULL;
     q->last = NULL;
+
+    free(q);
 }
+
 
 int queue_add(queue_t *q, int val) {
     spinlock_lock(spin);
