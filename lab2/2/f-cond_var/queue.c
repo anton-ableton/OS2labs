@@ -53,15 +53,27 @@ queue_t *queue_init(int max_count) {
     return q;
 }
 
+
 void queue_destroy(queue_t *q) {
-    for (int i = 0; i < q->count; ++i) {
-        qnode_t *tmp = q->first;
-        q->first = q->first->next;
-        free(tmp);
+    if (q == NULL) {
+        return;
     }
+
+    pthread_cancel(q->qmonitor_tid);
+    pthread_join(q->qmonitor_tid, NULL);
+
+    qnode_t *current = q->first;
+    while (current != NULL) {
+        qnode_t *temp = current;
+        current = current->next;
+        free(temp);
+    }
+
     q->count = 0;
     q->first = NULL;
     q->last = NULL;
+
+    free(q);
 }
 
 int queue_add(queue_t *q, int val) {
