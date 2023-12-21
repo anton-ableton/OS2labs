@@ -1,7 +1,7 @@
 # Simple HTTP-proxy on C
 
 ## Usage:
-
-- > make
-- >  ./main
-- > Enter port: <Enter your port> 
+In console:
+    <br/> make
+    <br/> ./main
+    <br/> Enter port: <Enter your port> 
