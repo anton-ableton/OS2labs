@@ -3,5 +3,5 @@
 ## Usage:
 ### In console:
      make
-    ./main
-    Enter port: [Enter your port] 
+     ./main
+     Enter port: [Enter your port] 
