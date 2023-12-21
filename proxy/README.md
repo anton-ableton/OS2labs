@@ -2,6 +2,6 @@
 
 ## Usage:
 
-   make
-   ./main
-   Enter port: <Enter your port> 
+- > make
+- >  ./main
+- > Enter port: <Enter your port> 
