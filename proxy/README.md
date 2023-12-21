@@ -1,1 +1,7 @@
-## Proxy is in development now, so it doesn't work
+# Simple HTTP-proxy on C
+
+## Usage:
+
+  > make
+  > ./main
+  > Enter port: <Enter your port> 
