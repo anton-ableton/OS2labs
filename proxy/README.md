@@ -2,6 +2,6 @@
 
 ## Usage:
 ### In console:
-    <br/>         make
-    <br/>         ./main
-    <br/>         Enter port: [Enter your port] 
+     make
+    ./main
+    Enter port: [Enter your port] 
