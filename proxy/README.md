@@ -4,4 +4,4 @@
 In console:
     <br/>         make
     <br/>         ./main
-    <br/>         Enter port: <Enter your port> 
+    <br/>         Enter port: [Enter your port] 
