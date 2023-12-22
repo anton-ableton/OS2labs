@@ -11,7 +11,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define PORT 80
 #define BUFFER_SIZE 4096
 
 typedef struct
@@ -20,7 +19,7 @@ typedef struct
     char *request;
 } context;
 
-int create_server_socket()
+int create_server_socket(int port)
 {
     struct sockaddr_in server_addr;
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -33,7 +32,7 @@ int create_server_socket()
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(PORT);
+    server_addr.sin_port = htons(port);
 
     if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
@@ -65,7 +64,6 @@ int read_request(int client_socket, char *request)
         fprintf(stderr, "Client disconnected\n");
         return -1;
     }
-
     request[bytes_read] = '\0';
     printf("Received from client: %s\n", request);
     return 0;
@@ -78,6 +76,7 @@ int connect_to_remote(char *host)
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+
 
     int status = getaddrinfo(host, "80", &hints, &res);
     if (status != 0)
@@ -111,9 +110,9 @@ void *client_handler(void *arg)
 
     context *ctx = (context *)arg;
     int client_socket = ctx->client_socket;
-    char *request0 = ctx->request;
+    char *request_temp = ctx->request;
     char request[BUFFER_SIZE];
-    strcpy(request, request0);
+    strcpy(request, request_temp);
 
     unsigned char host[1000];
     unsigned char *host_result = memcpy(host, strstr((char *)request, "Host:") + 6, sizeof(host));
@@ -146,7 +145,6 @@ void *client_handler(void *arg)
     ssize_t bytes_read;
     while ((bytes_read = read(dest_socket, buffer, BUFFER_SIZE)) > 0)
     {
-        printf("Received from remote server: %s\n", buffer);
         bytes_sent = write(client_socket, buffer, bytes_read);
         if (bytes_sent == -1)
         {
@@ -155,13 +153,12 @@ void *client_handler(void *arg)
             free(buffer);
             return NULL;
         }
-        printf("Sent to client: %s\n", buffer);
     }
 
     close(client_socket);
     close(dest_socket);
     free(buffer);
-    free(request0);
+    free(request_temp);
 
     return NULL;
 }
@@ -173,7 +170,7 @@ int main()
     scanf("%d", &port);
 
     printf("HTTP-proxy started on port %d\n", port);
-    int server_socket = create_server_socket();
+    int server_socket = create_server_socket(port);
     if (server_socket == -1)
     {
         perror("Error creating server socket");
