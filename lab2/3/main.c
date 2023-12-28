@@ -11,11 +11,28 @@
 #define SWAP2 4
 #define SWAP3 5
 
-void *ascending_thread(void *data)
+int compare_nodes(const char *value1, const char *value2, int operation)
+{
+  int pair_count = 0;
+  if ((operation == ASC && strlen(value1) < strlen(value2)) ||
+      (operation == DESC && strlen(value1) > strlen(value2)) ||
+      (operation == EQ && strlen(value1) == strlen(value2)))
+  {
+    pair_count++;
+  }
+  return pair_count;
+}
+
+void *process_thread(void *data)
 {
   ThreadData *thread_data = (ThreadData *)data;
   Storage *storage = thread_data->storage;
   int *counter = thread_data->counter;
+  if (storage->first == NULL || storage->first->next == NULL)
+  {
+    printf("Too few elements in queue\n");
+    return NULL;
+  }
 
   while (1)
   {
@@ -34,116 +51,8 @@ void *ascending_thread(void *data)
         {
           volatile int pair_count = 0;
           curr2 = curr->next;
-          if (strlen(curr->value) < strlen(curr2->value))
-          {
-            pair_count++;
-          }
-          tmp = curr;
-          curr = curr->next;
-          pthread_mutex_unlock(&tmp->sync);
-          pthread_mutex_unlock(&curr->sync);
-        }
-        else
-        {
-          tmp = curr;
-          curr = curr->next;
-          pthread_mutex_unlock(&tmp->sync);
-        }
-      }
-      else if (curr == NULL)
-      {
-        break;
-      }
-      else
-      {
-        curr = curr->next;
-      }
-    }
-
-    (*counter)++;
-  }
-  return NULL;
-}
-
-void *descending_thread(void *data)
-{
-  ThreadData *thread_data = (ThreadData *)data;
-  Storage *storage = thread_data->storage;
-  int *counter = thread_data->counter;
-  if (storage->first == NULL || storage->first->next == NULL)
-  {
-    printf("Too few elements in queue to desc\n");
-    return NULL;
-  }
-  while (1)
-  {
-    Node *curr = storage->first;
-    Node *curr2, *tmp;
-    while (1)
-    {
-      if (curr != NULL && pthread_mutex_trylock(&curr->sync) == 0)
-      {
-        if (curr->next != NULL && pthread_mutex_trylock(&curr->next->sync) == 0)
-        {
-          volatile int pair_count = 0;
-          curr2 = curr->next;
-          if (strlen(curr->value) == strlen(curr2->value))
-          {
-            pair_count++;
-          }
-          tmp = curr;
-          curr = curr->next;
-          pthread_mutex_unlock(&tmp->sync);
-          pthread_mutex_unlock(&curr->sync);
-        }
-        else
-        {
-          tmp = curr;
-          curr = curr->next;
-          pthread_mutex_unlock(&tmp->sync);
-        }
-      }
-      else if (curr == NULL)
-      {
-        break;
-      }
-      else
-      {
-        curr = curr->next;
-      }
-    }
-    (*counter)++;
-  }
-  return NULL;
-}
-
-void *equal_length_thread(void *data)
-{
-  ThreadData *thread_data = (ThreadData *)data;
-  Storage *storage = thread_data->storage;
-  int *counter = thread_data->counter;
-  if (storage->first == NULL || storage->first->next == NULL)
-  {
-    printf("Too few elements in queue to asc\n");
-    return NULL;
-  }
-
-  while (1)
-  {
-    Node *curr = storage->first;
-    Node *curr2, *tmp;
-    while (1)
-    {
-      if (curr != NULL && pthread_mutex_trylock(&curr->sync) == 0)
-      {
-        if (curr->next != NULL && pthread_mutex_trylock(&curr->next->sync) == 0)
-        {
-          volatile int pair_count = 0;
-          curr2 = curr->next;
-          if (strlen(curr->value) > strlen(curr2->value))
-          {
-            pair_count++;
-          }
+          int result = compare_nodes(curr->value, curr2->value, counter);
+          pair_count += result;
           tmp = curr;
           curr = curr->next;
           pthread_mutex_unlock(&tmp->sync);
@@ -175,6 +84,7 @@ void *swap_thread(void *data)
   ThreadData *thread_data = (ThreadData *)data;
   Storage *storage = thread_data->storage;
   int *counter = thread_data->counter;
+
   while (1)
   {
     Node *curr1 = storage->first;
@@ -184,8 +94,14 @@ void *swap_thread(void *data)
       break;
     }
     Node *curr2, *curr3, *tmp;
+    int should_swap = rand() % 2;
     while (1)
     {
+      if (should_swap == 0)
+        break;
+      // Eсли один поток блокирует curr1->sync, а затем пытается заблокировать curr1->next->sync,
+      // а другой поток уже удерживает curr1->next->sync и пытается заблокировать curr1->sync, это приведет
+      // к взаимной блокировке обоих потоков.
       if (curr1 != NULL && pthread_mutex_trylock(&curr1->sync) == 0)
       {
         if (curr1->next != NULL && pthread_mutex_trylock(&curr1->next->sync) == 0)
@@ -194,13 +110,10 @@ void *swap_thread(void *data)
           {
             curr2 = curr1->next;
             curr3 = curr1->next->next;
-            if (rand() % 2 == 0)
-            {
-              curr2->next = curr3->next;
-              curr3->next = curr2;
-              curr1->next = curr3;
-              (*counter)++;
-            }
+            curr2->next = curr3->next;
+            curr3->next = curr2;
+            curr1->next = curr3;
+            (*counter)++;
             tmp = curr1;
             curr1 = tmp->next;
             curr2 = curr1->next;
@@ -251,7 +164,6 @@ int main()
 {
   Storage *storage = initialize_storage(STORAGE_CAPACITY);
   fill_storage(storage);
-  print_storage(storage);
 
   pthread_t ascending_tid, descending_tid, equal_length_tid, swap_tid1, swap_tid2, swap_tid3, monitor;
 
@@ -264,9 +176,9 @@ int main()
   ThreadData swap_data2 = {storage, &counters[SWAP2]};
   ThreadData swap_data3 = {storage, &counters[SWAP3]};
 
-  pthread_create(&ascending_tid, NULL, ascending_thread, &ascending_data);
-  pthread_create(&descending_tid, NULL, descending_thread, &descending_data);
-  pthread_create(&equal_length_tid, NULL, equal_length_thread, &equal_data);
+  pthread_create(&ascending_tid, NULL, process_thread, &ascending_data);
+  pthread_create(&descending_tid, NULL, process_thread, &descending_data);
+  pthread_create(&equal_length_tid, NULL, process_thread, &equal_data);
   pthread_create(&swap_tid1, NULL, swap_thread, &swap_data1);
   pthread_create(&swap_tid2, NULL, swap_thread, &swap_data2);
   pthread_create(&swap_tid3, NULL, swap_thread, &swap_data3);
