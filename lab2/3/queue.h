@@ -11,7 +11,6 @@
 
 typedef struct _Node {
 	char value[MAX_STRING_LENGTH];
-
 	struct _Node *next;
 	pthread_mutex_t sync;
 } Node;
@@ -26,11 +25,8 @@ typedef struct _ThreadData {
 } ThreadData;
 
 Storage *initialize_storage(int capacity);
-
 void add_node(Storage *storage, const char *value);
-
 void fill_storage(Storage *storage);
-
 void print_storage(Storage *storage);
 
 #endif // __FITOS_QUEUE_H__
