@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#define HOST_LEN 1024
 #define BUFFER_SIZE 4096
 
 typedef struct
@@ -77,7 +78,6 @@ int connect_to_remote(char *host)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
-
     int status = getaddrinfo(host, "80", &hints, &res);
     if (status != 0)
     {
@@ -105,28 +105,79 @@ int connect_to_remote(char *host)
     return dest_socket;
 }
 
+int get_host(char *request, unsigned char *resolved_host, int before_host_flag)
+{
+    char *host_start;
+    const char *host_end;
+    if (before_host_flag == 0)
+    {
+        host_start = strstr(request, "http://");
+        if (host_start == NULL)
+        {
+            return -1;
+        }
+        host_start += strlen("http://");
+        host_end = strchr(host_start, '/');
+    }
+    else
+    {
+        host_start = strstr(request, "Host:");
+        if (host_start == NULL)
+        {
+            return -1;
+        }
+        host_start += strlen("Host:");
+        host_end = strpbrk(host_start, " \r\n:");
+    }
+
+    if (host_end == NULL)
+    {
+        return -1;
+    }
+
+    size_t host_length = host_end - host_start;
+    if (host_length <= 0)
+    {
+        return -1;
+    }
+    strncpy(resolved_host, host_start, host_length);
+    resolved_host[host_length] = '\0';
+
+    return 0;
+}
+
 void *client_handler(void *arg)
 {
 
     context *ctx = (context *)arg;
     int client_socket = ctx->client_socket;
     char *request_temp = ctx->request;
+    printf(request_temp);
+    size_t request_len = strlen(request_temp);
+
+    if (request_len >= BUFFER_SIZE)
+    {
+        fprintf(stderr, "Request is too large\n");
+        return NULL;
+    }
+
     char request[BUFFER_SIZE];
     strcpy(request, request_temp);
 
-    unsigned char host[1000];
-    unsigned char *host_result = memcpy(host, strstr((char *)request, "Host:") + 6, sizeof(host));
-    for (int i = 0; i < sizeof(host); i++)
+    unsigned char host[HOST_LEN];
+    if (get_host(request, host, 0) != 0)
     {
-        if (host_result[i] == ':' || host_result[i] == '\n' || host_result[i] == '\r' || host_result[i] == ' ')
+        if (get_host(request, host, 1) != 0)
         {
-            host_result[i] = '\0';
-            break;
+            fprintf(stderr, "Host not found in the request\n");
+            return NULL;
         }
     }
-    host[host_result - host - 1] = '\0';
 
-    int dest_socket = connect_to_remote((char *)host_result);
+    printf("Host: %s", host);
+
+    int dest_socket = connect_to_remote((char *)host);
+
     if (dest_socket == -1)
     {
         close(client_socket);
